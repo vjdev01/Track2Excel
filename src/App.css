@@ -1,0 +1,277 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+.tracker-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  background: #fff;
+  color: #222;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  padding: 2rem 1.5rem 2.5rem 1.5rem;
+}
+.date-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+.today-label {
+  font-weight: bold;
+  color: #2e7d32;
+}
+.activity-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.start-btn {
+  background: #43a047;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  padding: 0.7em 1.5em;
+  font-size: 1.1em;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.start-btn:disabled {
+  background: #bdbdbd;
+  color: #eee;
+}
+.stop-btn {
+  background: #e53935;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  padding: 0.7em 1.5em;
+  font-size: 1.1em;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.stop-btn:disabled {
+  background: #bdbdbd;
+  color: #eee;
+}
+.timer-display {
+  font-size: 1.3em;
+  font-family: monospace;
+  min-width: 60px;
+  text-align: center;
+}
+.activity-log {
+  margin-top: 2.5rem;
+  text-align: left;
+}
+.activity-log h2 {
+  font-size: 1.2em;
+  margin-bottom: 1rem;
+}
+.empty-log {
+  color: #aaa;
+  text-align: center;
+  margin: 2rem 0;
+}
+.activity-entry {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+.task-title {
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 0.2em;
+}
+.activity-meta {
+  color: #666;
+  font-size: 0.95em;
+  margin-bottom: 0.3em;
+}
+.in-progress {
+  color: #e53935;
+  font-weight: bold;
+}
+.activity-tags {
+  margin-bottom: 0.3em;
+}
+.tag {
+  display: inline-block;
+  background: #e0e0e0;
+  color: #333;
+  border-radius: 6px;
+  padding: 0.2em 0.7em;
+  font-size: 0.9em;
+  margin-right: 0.5em;
+}
+.tag.type {
+  background: #b3e5fc;
+  color: #0277bd;
+}
+.tag.area {
+  background: #ffe082;
+  color: #f57c00;
+}
+.effort-rating {
+  color: #388e3c;
+  font-weight: bold;
+  font-size: 0.98em;
+}
+.notes {
+  color: #444;
+  font-size: 0.97em;
+  margin-top: 0.2em;
+}
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem 1.5rem;
+  min-width: 320px;
+  max-width: 95vw;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  position: relative;
+}
+.modal-content label {
+  display: block;
+  margin-top: 1em;
+  font-weight: 500;
+}
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+  width: 100%;
+  margin-top: 0.3em;
+  padding: 0.5em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1em;
+  margin-bottom: 0.5em;
+}
+.modal-content textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+.modal-actions {
+  display: flex;
+  gap: 1em;
+  margin-top: 1.5em;
+  justify-content: flex-end;
+}
+.cancel-btn {
+  background: #bdbdbd;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  padding: 0.7em 1.5em;
+  font-size: 1.1em;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.tooltip-icon {
+  margin-left: 0.5em;
+  cursor: pointer;
+  position: relative;
+  color: #888;
+}
+.tooltip-text {
+  position: absolute;
+  left: 1.5em;
+  top: -0.5em;
+  background: #222;
+  color: #fff;
+  padding: 0.7em 1em;
+  border-radius: 8px;
+  font-size: 0.95em;
+  width: 320px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.export-btn {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  padding: 0.5em 1.2em;
+  font-size: 1em;
+  border-radius: 8px;
+  margin-left: 1.5em;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.export-btn:hover {
+  background: #1565c0;
+}
+.edit-icon {
+  display: inline-block;
+  margin-left: 0.5em;
+  color: #1976d2;
+  cursor: pointer;
+  vertical-align: middle;
+  font-size: 1.1em;
+  transition: color 0.2s;
+}
+.edit-icon:hover {
+  color: #0d47a1;
+}
+@media (max-width: 600px) {
+  .tracker-container {
+    padding: 1rem 0.2rem 2rem 0.2rem;
+  }
+  .modal {
+    min-width: 90vw;
+    padding: 1.2rem 0.5rem;
+  }
+}
