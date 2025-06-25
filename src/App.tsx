@@ -75,6 +75,32 @@ function formatChartDate(dateStr: string) {
   return d.toLocaleString('en-US', { month: 'short', day: '2-digit' }).replace(',', '').replace(/^([A-Za-z]+) (\d{2})$/, '$1-$2');
 }
 
+// Helper: get minutes between two times (HH:mm)
+function getMinutesBetween(start: string, end: string) {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return (eh * 60 + em) - (sh * 60 + sm);
+}
+// Helper: get minutes since start of tracking period today
+function getMinutesSinceTrackingStart(trackingStart: string) {
+  const now = new Date();
+  const [sh, sm] = trackingStart.split(':').map(Number);
+  const start = new Date(now);
+  start.setHours(sh, sm, 0, 0);
+  return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000));
+}
+// Helper: get minutes remaining in tracking period today
+function getMinutesRemaining(trackingEnd: string) {
+  const now = new Date();
+  const [eh, em] = trackingEnd.split(':').map(Number);
+  const end = new Date(now);
+  end.setHours(eh, em, 0, 0);
+  return Math.max(0, Math.floor((end.getTime() - now.getTime()) / 60000));
+}
+
+const DEFAULT_TRACK_START = '09:00';
+const DEFAULT_TRACK_END = '18:00';
+
 const App: React.FC = () => {
   // State
   const [selectedDate, setSelectedDate] = useState(getLocalToday());
@@ -88,6 +114,8 @@ const App: React.FC = () => {
   const [editEndTimeActivity, setEditEndTimeActivity] = useState<Activity | null>(null);
   const [tab, setTab] = useState<'tracking' | 'analysis' | 'settings'>('tracking');
   const [lastExport, setLastExport] = useState<string | null>(localStorage.getItem('lastExport'));
+  const [trackStart, setTrackStart] = useState<string>(() => localStorage.getItem('trackStart') || DEFAULT_TRACK_START);
+  const [trackEnd, setTrackEnd] = useState<string>(() => localStorage.getItem('trackEnd') || DEFAULT_TRACK_END);
 
   // Load activities from localStorage (fix: parse as Activity[])
   useEffect(() => {
@@ -227,6 +255,24 @@ const App: React.FC = () => {
     };
   });
 
+  // Tracking period calculations
+  const totalTrackMinutes = getMinutesBetween(trackStart, trackEnd);
+  const now = new Date();
+  const [sh, sm] = trackStart.split(':').map(Number);
+  const [eh, em] = trackEnd.split(':').map(Number);
+  const start = new Date(now); start.setHours(sh, sm, 0, 0);
+  const end = new Date(now); end.setHours(eh, em, 0, 0);
+  const elapsed = Math.max(0, Math.min(totalTrackMinutes, Math.floor((now.getTime() - start.getTime()) / 60000)));
+  const remaining = Math.max(0, Math.min(totalTrackMinutes - elapsed, Math.floor((end.getTime() - now.getTime()) / 60000)));
+  const tracked = activitiesForDate.filter(a => a.endTime && new Date(a.startTime) >= start && new Date(a.endTime) <= end)
+    .reduce((sum, a) => sum + (a.duration || 0), 0);
+  const trackedPct = Math.max(0, Math.min(1, tracked / totalTrackMinutes));
+  const elapsedPct = Math.max(0, Math.min(1, elapsed / totalTrackMinutes));
+  const remainingPct = Math.max(0, Math.min(1, remaining / totalTrackMinutes));
+  const redPct = Math.max(0, Math.min(1, elapsedPct - trackedPct));
+  const greenPct = trackedPct;
+  const grayPct = 1 - elapsedPct;
+
   return (
     <div className="tracker-container fixed-viewport">
       {/* Tabs */}
@@ -237,6 +283,33 @@ const App: React.FC = () => {
       </div>
       {tab === 'tracking' && (
         <div className="tracking-tab-content">
+          {/* Tracking period bar */}
+          <div className="tracking-bar-container">
+            <div className="tracking-bar-labels">
+              <span>{trackStart}</span>
+              <span>{trackEnd}</span>
+            </div>
+            <div
+              className="tracking-bar"
+              tabIndex={0}
+              aria-label="Tracking period bar"
+            >
+              <div className="bar-green" style={{ width: `${greenPct * 100}%` }} />
+              <div className="bar-red" style={{ width: `${redPct * 100}%` }} />
+              <div className="bar-gray" style={{ width: `${grayPct * 100}%` }} />
+              <div className="tracking-bar-tooltip">
+                <span><strong>{tracked} min</strong> tracked (green)</span><br />
+                <span><strong>{elapsed - tracked} min</strong> untracked (red)</span><br />
+                <span><strong>{totalTrackMinutes - elapsed} min</strong> remaining (gray)</span><br />
+                <span>Total: <strong>{totalTrackMinutes} min</strong></span>
+              </div>
+            </div>
+            <div className="tracking-bar-info">
+              <span>{tracked} min tracked</span>
+              <span>{elapsed} min elapsed</span>
+              <span>{totalTrackMinutes} min total</span>
+            </div>
+          </div>
           {/* Date Selector */}
           <div className="date-selector">
             <input
@@ -395,12 +468,22 @@ const App: React.FC = () => {
       )}
       {tab === 'settings' && (
         <div className="settings-section">
-          <h2>Settings</h2>
-          <div className="settings-info">
-            <div><strong>Activities to export:</strong> {activities.length}</div>
-            <div><strong>Last export:</strong> {lastExport ? lastExport : 'Never'}</div>
+          <div className="settings-row">
+            <div className="settings-label">
+              <strong>Activities to export:</strong> {activities.length}
+            </div>
+            <button className="export-btn" onClick={handleExportCSV}>Export CSV</button>
           </div>
-          <button className="export-btn" onClick={handleExportCSV}>Export CSV</button>
+          <div className="settings-row last-export-row">
+            <span><strong>Last export:</strong> {lastExport ? lastExport : 'Never'}</span>
+          </div>
+          <div className="settings-row tracking-period-settings">
+            <label><strong>Tracking Period:</strong></label>
+            <input type="time" value={trackStart} onChange={e => setTrackStart(e.target.value)} />
+            <span>to</span>
+            <input type="time" value={trackEnd} onChange={e => setTrackEnd(e.target.value)} />
+            <span className="tracking-period-desc">(Default: 09:00 to 18:00)</span>
+          </div>
         </div>
       )}
       {/* Modals */}
