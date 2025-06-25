@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/Track2Excel/', // <-- Add this line
   plugins: [react()],
   build: {
     chunkSizeWarningLimit: 1000, // Increase warning limit to 1000kB
