@@ -11,7 +11,7 @@ const WELLBEING_AREAS = [
   'Physical', 'Mental', 'Financial', 'Family', 'Professional', 'Social',
 ] as const;
 const TASK_SUGGESTIONS = [
-  'Eating', 'Shopping', 'TV', 'Browsing', 'Grooming', 'Cleaning', 'Meeting',
+  'Eating', 'Exercising', 'Cooking', 'Coding', 'Email', 'Shopping', 'FB', 'Insta', 'Twitter', 'Whatsapp', 'TV', 'Reading', 'Researching', 'Planning', 'Grooming', 'Cleaning', 'Meeting',
 ];
 
 type ActivityType = typeof ACTIVITY_TYPES[number];
@@ -116,6 +116,8 @@ const App: React.FC = () => {
   const [lastExport, setLastExport] = useState<string | null>(localStorage.getItem('lastExport'));
   const [trackStart, setTrackStart] = useState<string>(() => localStorage.getItem('trackStart') || DEFAULT_TRACK_START);
   const [trackEnd, setTrackEnd] = useState<string>(() => localStorage.getItem('trackEnd') || DEFAULT_TRACK_END);
+  // Add state and handler for import result and CSV import
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Load activities from localStorage (fix: parse as Activity[])
   useEffect(() => {
@@ -140,6 +142,14 @@ const App: React.FC = () => {
       localStorage.removeItem('activities');
     }
   }, [activities]);
+
+  // Persist tracking period start/end to localStorage
+  useEffect(() => {
+    localStorage.setItem('trackStart', trackStart);
+  }, [trackStart]);
+  useEffect(() => {
+    localStorage.setItem('trackEnd', trackEnd);
+  }, [trackEnd]);
 
   // Timer effect
   useEffect(() => {
@@ -272,6 +282,51 @@ const App: React.FC = () => {
   const redPct = Math.max(0, Math.min(1, elapsedPct - trackedPct));
   const greenPct = trackedPct;
   const grayPct = 1 - elapsedPct;
+
+  // Add import handler
+  function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length < 2) throw new Error('CSV missing data rows.');
+        const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const expected = ['Task Title','Start Time','End Time','Duration (min)','Activity Type','Well-being Area','Effort Rating','Notes','Date'];
+        if (header.length !== expected.length || !header.every((h, i) => h === expected[i])) {
+          throw new Error('CSV schema does not match expected format.');
+        }
+        const imported: Activity[] = [];
+        for (let i = 1; i < lines.length; ++i) {
+          const row = lines[i];
+          if (!row.trim()) continue;
+          // Handle quoted fields and commas
+          const fields = row.match(/("[^"]*"|[^,]*)/g)?.map(f => f.replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
+          if (fields.length !== expected.length) continue;
+          imported.push({
+            id: Math.random().toString(36).slice(2),
+            taskTitle: fields[0] || undefined,
+            startTime: new Date(fields[1]).toISOString(),
+            endTime: fields[2] ? new Date(fields[2]).toISOString() : undefined,
+            duration: fields[3] ? Number(fields[3]) : undefined,
+            activityType: fields[4] as ActivityType,
+            wellbeingArea: fields[5] as WellbeingArea,
+            effortRating: fields[6] ? Number(fields[6]) : undefined,
+            notes: fields[7] || undefined,
+            date: fields[8],
+          });
+        }
+        if (imported.length === 0) throw new Error('No valid records found in CSV.');
+        setActivities(prev => [...prev, ...imported]);
+        setImportResult({ success: true, message: `${imported.length} activities imported successfully.` });
+      } catch (err: any) {
+        setImportResult({ success: false, message: err.message || 'Import failed.' });
+      }
+    };
+    reader.readAsText(file);
+  }
 
   return (
     <div className="tracker-container fixed-viewport">
@@ -468,14 +523,29 @@ const App: React.FC = () => {
       )}
       {tab === 'settings' && (
         <div className="settings-section">
-          <div className="settings-row">
+          <div className="settings-row settings-row-tight">
             <div className="settings-label">
               <strong>Activities to export:</strong> {activities.length}
             </div>
             <button className="export-btn" onClick={handleExportCSV}>Export CSV</button>
           </div>
-          <div className="settings-row last-export-row">
+          <div className="settings-row settings-row-tight last-export-row">
             <span><strong>Last export:</strong> {lastExport ? lastExport : 'Never'}</span>
+          </div>
+          <div className="settings-row import-row">
+            <input
+              type="file"
+              accept=".csv"
+              id="import-csv-input"
+              style={{ display: 'none' }}
+              onChange={handleImportCSV}
+            />
+            <button className="import-btn" onClick={() => document.getElementById('import-csv-input')?.click()}>
+              Import CSV
+            </button>
+            {importResult && (
+              <span className={importResult.success ? 'import-success' : 'import-error'}>{importResult.message}</span>
+            )}
           </div>
           <div className="settings-row tracking-period-settings">
             <label><strong>Tracking Period:</strong></label>

@@ -49,6 +49,19 @@
   box-shadow: 0 2px 16px rgba(0,0,0,0.08);
   padding: 2rem 1.5rem 2.5rem 1.5rem;
 }
+.tracker-container.fixed-viewport {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: #f8f9fa;
+  box-sizing: border-box;
+  padding: 0;
+}
 .date-selector {
   display: flex;
   align-items: center;
@@ -278,6 +291,9 @@
   margin-bottom: 0.75rem;
   width: 100%;
 }
+.settings-row-tight {
+  margin-bottom: 0.25rem;
+}
 .settings-label {
   margin-right: 1rem;
   font-size: 1rem;
@@ -430,20 +446,113 @@
   background: #d2e3fc;
   color: #125ea2;
 }
+.import-row {
+  margin-bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.import-btn {
+  background: #43a047;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  padding: 0.5em 1.2em;
+  font-size: 1em;
+  border-radius: 8px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.import-btn:hover {
+  background: #2e7d32;
+}
+.import-success {
+  color: #388e3c;
+  font-weight: 500;
+  margin-left: 0.7em;
+}
+.import-error {
+  color: #e53935;
+  font-weight: 500;
+  margin-left: 0.7em;
+}
+.tracking-tab-content,
+.analysis-section,
+.settings-section {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 500px;
+  min-height: calc(100dvh - 56px); /* 56px = tab bar height, adjust if needed */
+  margin: 0 auto;
+  background: #fff;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 1rem;
+}
+
+.analysis-section {
+  /* already has correct width and padding from shared rule */
+}
+.analysis-controls {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 1.2rem 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+.chart-section {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 1.5rem 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
 @media (max-width: 600px) {
-  .tracker-container {
-    padding: 1rem 0.2rem 2rem 0.2rem;
+  .tracker-container,
+  .tracker-container.fixed-viewport {
+    max-width: 100vw;
+    width: 100vw;
+    min-height: 100dvh;
+    padding: 0 0 2rem 0;
+    border-radius: 0;
+    box-shadow: none;
   }
-  .modal {
-    min-width: 90vw;
-    padding: 1.2rem 0.5rem;
+  .tracking-tab-content,
+  .analysis-section,
+  .settings-section {
+    max-width: 100vw;
+    width: 100vw;
+    min-height: calc(100dvh - 56px);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1rem 0.5rem;
   }
-  .tabs.tab-bar {
-    font-size: 0.98em;
-    margin-bottom: 1.1rem;
-  }
-  .tab {
-    padding: 0.7em 0.1em;
-    font-size: 1em;
+  .analysis-controls,
+  .chart-section {
+    width: 100%;
+    max-width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
   }
 }
