@@ -170,9 +170,6 @@ const App: React.FC = () => {
     .filter((a: any) => a.date === selectedDate)
     .sort((a: any, b: any) => (b.startTime.localeCompare(a.startTime)));
 
-  // Dates with activities
-  const datesWithActivities = new Set(activities.map((a: any) => a.date));
-
   // Helper: is selected date today?
   const isToday = selectedDate === getLocalToday();
 
@@ -267,21 +264,31 @@ const App: React.FC = () => {
 
   // Tracking period calculations
   const totalTrackMinutes = getMinutesBetween(trackStart, trackEnd);
-  const now = new Date();
-  const [sh, sm] = trackStart.split(':').map(Number);
-  const [eh, em] = trackEnd.split(':').map(Number);
-  const start = new Date(now); start.setHours(sh, sm, 0, 0);
-  const end = new Date(now); end.setHours(eh, em, 0, 0);
-  const elapsed = Math.max(0, Math.min(totalTrackMinutes, Math.floor((now.getTime() - start.getTime()) / 60000)));
-  const remaining = Math.max(0, Math.min(totalTrackMinutes - elapsed, Math.floor((end.getTime() - now.getTime()) / 60000)));
-  const tracked = activitiesForDate.filter(a => a.endTime && new Date(a.startTime) >= start && new Date(a.endTime) <= end)
-    .reduce((sum, a) => sum + (a.duration || 0), 0);
+  let elapsed = totalTrackMinutes;
+  let remaining = 0;
+  let tracked = 0;
+  if (isToday) {
+    const now = new Date();
+    const [sh, sm] = trackStart.split(':').map(Number);
+    const [eh, em] = trackEnd.split(':').map(Number);
+    const start = new Date(now); start.setHours(sh, sm, 0, 0);
+    const end = new Date(now); end.setHours(eh, em, 0, 0);
+    elapsed = Math.max(0, Math.min(totalTrackMinutes, Math.floor((now.getTime() - start.getTime()) / 60000)));
+    remaining = Math.max(0, Math.min(totalTrackMinutes - elapsed, Math.floor((end.getTime() - now.getTime()) / 60000)));
+    tracked = activitiesForDate.filter(a => a.endTime && new Date(a.startTime) >= start && new Date(a.endTime) <= end)
+      .reduce((sum, a) => sum + (a.duration || 0), 0);
+  } else {
+    // For past days, show full period and tracked for that day
+    tracked = activitiesForDate.filter(a => a.endTime)
+      .reduce((sum, a) => sum + (a.duration || 0), 0);
+    elapsed = totalTrackMinutes;
+    remaining = 0;
+  }
   const trackedPct = Math.max(0, Math.min(1, tracked / totalTrackMinutes));
-  const elapsedPct = Math.max(0, Math.min(1, elapsed / totalTrackMinutes));
-  const remainingPct = Math.max(0, Math.min(1, remaining / totalTrackMinutes));
-  const redPct = Math.max(0, Math.min(1, elapsedPct - trackedPct));
+  const elapsedPct = isToday ? Math.max(0, Math.min(1, elapsed / totalTrackMinutes)) : 1;
+  const redPct = isToday ? Math.max(0, Math.min(1, elapsedPct - trackedPct)) : 1 - trackedPct;
   const greenPct = trackedPct;
-  const grayPct = 1 - elapsedPct;
+  const grayPct = isToday ? 1 - elapsedPct : 0;
 
   // Add import handler
   function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
@@ -315,7 +322,7 @@ const App: React.FC = () => {
             wellbeingArea: fields[5] as WellbeingArea,
             effortRating: fields[6] ? Number(fields[6]) : undefined,
             notes: fields[7] || undefined,
-            date: fields[8],
+            date: toLocalDateString(fields[1]), // Use local date from startTime
           });
         }
         if (imported.length === 0) throw new Error('No valid records found in CSV.');
@@ -338,33 +345,6 @@ const App: React.FC = () => {
       </div>
       {tab === 'tracking' && (
         <div className="tracking-tab-content">
-          {/* Tracking period bar */}
-          <div className="tracking-bar-container">
-            <div className="tracking-bar-labels">
-              <span>{trackStart}</span>
-              <span>{trackEnd}</span>
-            </div>
-            <div
-              className="tracking-bar"
-              tabIndex={0}
-              aria-label="Tracking period bar"
-            >
-              <div className="bar-green" style={{ width: `${greenPct * 100}%` }} />
-              <div className="bar-red" style={{ width: `${redPct * 100}%` }} />
-              <div className="bar-gray" style={{ width: `${grayPct * 100}%` }} />
-              <div className="tracking-bar-tooltip">
-                <span><strong>{tracked} min</strong> tracked (green)</span><br />
-                <span><strong>{elapsed - tracked} min</strong> untracked (red)</span><br />
-                <span><strong>{totalTrackMinutes - elapsed} min</strong> remaining (gray)</span><br />
-                <span>Total: <strong>{totalTrackMinutes} min</strong></span>
-              </div>
-            </div>
-            <div className="tracking-bar-info">
-              <span>{tracked} min tracked</span>
-              <span>{elapsed} min elapsed</span>
-              <span>{totalTrackMinutes} min total</span>
-            </div>
-          </div>
           {/* Date Selector */}
           <div className="date-selector">
             <input
@@ -399,6 +379,33 @@ const App: React.FC = () => {
               </button>
             </div>
           )}
+          {/* Tracking period bar */}
+          <div className="tracking-bar-container">
+            <div className="tracking-bar-labels">
+              <span>{trackStart}</span>
+              <span>{trackEnd}</span>
+            </div>
+            <div
+              className="tracking-bar"
+              tabIndex={0}
+              aria-label="Tracking period bar"
+            >
+              <div className="bar-green" style={{ width: `${greenPct * 100}%` }} />
+              <div className="bar-red" style={{ width: `${redPct * 100}%` }} />
+              <div className="bar-gray" style={{ width: `${grayPct * 100}%` }} />
+              <div className="tracking-bar-tooltip">
+                <span><strong>{tracked} min</strong> tracked (green)</span><br />
+                <span><strong>{elapsed - tracked} min</strong> untracked (red)</span><br />
+                <span><strong>{totalTrackMinutes - elapsed} min</strong> remaining (gray)</span><br />
+                <span>Total: <strong>{totalTrackMinutes} min</strong></span>
+              </div>
+            </div>
+            <div className="tracking-bar-info">
+              <span>{tracked} min tracked</span>
+              <span>{elapsed} min elapsed</span>
+              <span>{totalTrackMinutes} min total</span>
+            </div>
+          </div>
           {/* Activity Log */}
           <div className="activity-log">
             <h2>Activity Log</h2>
@@ -657,7 +664,7 @@ const StartActivityModal: React.FC<{
         <div className="modal-actions">
           <button className="start-btn" onClick={() => onStart({
             id: Math.random().toString(36).slice(2),
-            date: getToday(),
+            date: getLocalToday(), // Use local date
             startTime: new Date().toISOString(),
             activityType,
             wellbeingArea,

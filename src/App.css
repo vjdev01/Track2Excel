@@ -78,7 +78,7 @@
   align-items: center;
   justify-content: center;
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0.1rem; /* Reduced space below activity controls */
 }
 .start-btn {
   background: #43a047;
@@ -115,7 +115,7 @@
   text-align: center;
 }
 .activity-log {
-  margin-top: 2.5rem;
+  margin-top: 0.1rem;
   text-align: left;
 }
 .activity-log h2 {
@@ -336,14 +336,26 @@
 }
 .tracking-bar-container {
   width: 100%;
-  margin: 1.2rem 0 1.5rem 0;
-  padding: 0.5rem 0.5rem 0.7rem 0.5rem;
+  margin: 0.7rem 0 0.7rem 0; /* Reduce vertical space above and below */
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
   background: #f7f7fa;
   border-radius: 10px;
   box-shadow: 0 1px 4px rgba(30,40,60,0.07);
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  box-sizing: border-box; /* Prevent overflow */
+  overflow-x: auto;       /* Allow scroll if needed */
+}
+.tracking-bar-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  height:fit-content;
+  background: #fff;
+  color: #222;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  padding: 2rem 1.5rem 2.5rem 1.5rem;
 }
 .tracking-bar-labels {
   display: flex;
@@ -525,6 +537,12 @@ html, body {
   box-sizing: border-box;
 }
 
+.activity-log ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
 @media (max-width: 600px) {
   .tracker-container,
   .tracker-container.fixed-viewport {
@@ -554,5 +572,13 @@ html, body {
     padding-left: 0;
     padding-right: 0;
     box-sizing: border-box;
+  }
+  .tracking-bar-container {
+    max-width: 100vw;
+    width: 100vw;
+    box-sizing: border-box;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    overflow-x: auto;
   }
 }
