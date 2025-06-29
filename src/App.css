@@ -3,6 +3,10 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  height: 100vh;
+  min-height: 100vh;
+  width: 100vw;
+  min-width: 100vw;
 }
 
 .logo {
@@ -50,17 +54,13 @@
   padding: 2rem 1.5rem 2.5rem 1.5rem;
 }
 .tracker-container.fixed-viewport {
-  min-height: 100dvh;
-  width: 100%;
-  max-width: 500px;
-  margin: 0 auto;
+  min-height: 100vh;
+  min-width: 100vw;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  background: #f8f9fa;
-  box-sizing: border-box;
-  padding: 0;
+  background: #fff;
+  position: relative;
 }
 .date-selector {
   display: flex;
@@ -336,17 +336,19 @@
 }
 .tracking-bar-container {
   width: 100%;
-  margin: 0.7rem 0 0.7rem 0; /* Reduce vertical space above and below */
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  max-width: 500px;
+  margin: 0.7rem auto 0.7rem auto;
+  padding: 0.5rem;
   background: #f7f7fa;
   border-radius: 10px;
   box-shadow: 0 1px 4px rgba(30,40,60,0.07);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  box-sizing: border-box; /* Prevent overflow */
-  overflow-x: auto;       /* Allow scroll if needed */
+  box-sizing: border-box;
+  overflow-x: auto;
 }
+
 .tracking-bar-container {
   max-width: 500px;
   margin: 2rem auto;
@@ -428,6 +430,9 @@
   box-shadow: 0 1px 4px rgba(30,40,60,0.07);
   overflow: hidden;
   border: 1px solid #c5d3f6;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 .tab {
   flex: 1 1 0;
@@ -504,9 +509,6 @@
   padding: 1rem;
 }
 
-.analysis-section {
-  /* already has correct width and padding from shared rule */
-}
 .analysis-controls {
   width: 100%;
   max-width: 100%;
@@ -537,13 +539,33 @@ html, body {
   box-sizing: border-box;
 }
 
-.activity-log ul {
-  list-style: none;
-  padding-left: 0;
+html, body, #root {
+  height: 100vh;
+  min-height: 100vh;
+  width: 100vw;
+  min-width: 100vw;
   margin: 0;
+  padding: 0;
+  background: #fff;
+  box-sizing: border-box;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overscroll-behavior-y: contain;
+  touch-action: manipulation;
 }
 
 @media (max-width: 600px) {
+  html, body, #root {
+    height: 100dvh;
+    min-height: 100dvh;
+    width: 100vw;
+    min-width: 100vw;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
   .tracker-container,
   .tracker-container.fixed-viewport {
     max-width: 100vw;
@@ -576,9 +598,9 @@ html, body {
   .tracking-bar-container {
     max-width: 100vw;
     width: 100vw;
-    box-sizing: border-box;
+    margin-left: 0;
+    margin-right: 0;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
-    overflow-x: auto;
   }
 }

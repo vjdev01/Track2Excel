@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import {useState, useEffect } from 'react';
 import './App.css';
 import { FaEdit } from 'react-icons/fa';
 import {
@@ -412,9 +413,9 @@ const App: React.FC = () => {
             {activitiesForDate.length === 0 ? (
               <div className="empty-log">No activities recorded for this date.</div>
             ) : (
-              <ul>
+              <div>
                 {activitiesForDate.map(a => (
-                  <li key={a.id} className="activity-entry">
+                  <div key={a.id} className="activity-entry">
                     <div className="task-title">{a.taskTitle || <em>Untitled</em>}
                       {a.endTime && (
                         <span className="edit-icon" title="Edit Activity" onClick={() => setEditActivity(a)}>
@@ -443,9 +444,9 @@ const App: React.FC = () => {
                       <div className="effort-rating">Effort: {a.effortRating}/10</div>
                     )}
                     {a.notes && <div className="notes">Notes: {a.notes}</div>}
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </div>

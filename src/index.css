@@ -28,6 +28,10 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+
+  /* Prevent scroll bounce and unwanted background */
+  overscroll-behavior-y: contain;
+  touch-action: manipulation;
 }
 
 h1 {
@@ -52,6 +56,32 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Ensure full-viewport, marginless, white background for PWA/mobile */
+html, body, #root {
+  height: 100vh;
+  min-height: 100vh;
+  width: 100vw;
+  min-width: 100vw;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  box-sizing: border-box;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove unwanted scrollbars and fix viewport on mobile */
+@media (max-width: 600px) {
+  html, body, #root {
+    height: 100dvh;
+    min-height: 100dvh;
+    width: 100vw;
+    min-width: 100vw;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
 }
 
 @media (prefers-color-scheme: light) {
