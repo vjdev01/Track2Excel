@@ -1,15 +1,18 @@
 import React from 'react';
 import {useState, useEffect } from 'react';
 import './App.css';
+import Outcomes, { OutcomeSelect } from './OutcomePlanner';
+import { outcomesForPeriod, parseOutcomes } from './outcomes';
+import type { Outcome } from './outcomes';
 import { FaEdit } from 'react-icons/fa';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, Line
 } from 'recharts';
 
 // Types
 const ACTIVITY_TYPES = ['Value', 'Incidental', 'Waste'] as const;
 const WELLBEING_AREAS = [
-  'Physical', 'Mental', 'Financial', 'Family', 'Professional', 'Social',
+'Professional', 'Physical', 'Mental', 'Financial', 'Family', 'Social',
 ] as const;
 const TASK_SUGGESTIONS = [
   'Eating', 'Exercising', 'Cooking', 'Coding', 'Email', 'Shopping', 'FB', 'Insta', 'Twitter', 'Whatsapp', 'TV', 'Reading', 'Researching', 'Planning', 'Grooming', 'Cleaning', 'Meeting',
@@ -29,6 +32,7 @@ interface Activity {
   taskTitle?: string;
   effortRating?: number;
   notes?: string;
+  outcomeId?: string;
 }
 
 function getToday() {
@@ -49,7 +53,11 @@ function formatTime(iso: string) {
 }
 
 function formatDuration(ms: number) {
-  return `${Math.round(ms / 60000)} min`;
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  //return `${Math.round(ms / 60000)} min`;
 }
 
 // Helper: format date to yyyy-MM-ddTHH:mm for local time
@@ -105,44 +113,61 @@ const DEFAULT_TRACK_END = '18:00';
 const App: React.FC = () => {
   // State
   const [selectedDate, setSelectedDate] = useState(getLocalToday());
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activityStorage] = useState(() => {
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem('activities') || '[]');
+      if (!Array.isArray(parsed)) throw new Error('Invalid saved activities');
+      return { items: parsed as Activity[], error: '' };
+    } catch { return { items: [] as Activity[], error: 'Saved activities could not be read. They have not been overwritten.' }; }
+  });
+  const [activities, setActivities] = useState<Activity[]>(activityStorage.items);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
-  const [activeActivity, setActiveActivity] = useState<Activity | null>(null);
+  const [activeActivity, setActiveActivity] = useState<Activity | null>(() => activityStorage.items.find(activity => !activity.endTime) || null);
   const [timer, setTimer] = useState(0);
   const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
   const [editEndTimeActivity, setEditEndTimeActivity] = useState<Activity | null>(null);
-  const [tab, setTab] = useState<'tracking' | 'analysis' | 'settings'>('tracking');
+  const [tab, setTab] = useState<'tracking' | 'outcomes' | 'analysis' | 'settings'>('tracking');
+  const [outcomeStorage] = useState(() => {
+    try { return { items: parseOutcomes(localStorage.getItem('outcomes')), error: '' }; }
+    catch { return { items: [] as Outcome[], error: 'Saved outcomes could not be read. Planning is disabled to preserve your saved data.' }; }
+  });
+  const [outcomes, setOutcomes] = useState<Outcome[]>(outcomeStorage.items);
+  const [outcomeSaveError, setOutcomeSaveError] = useState('');
+  const dailyOutcomes = outcomesForPeriod(outcomes, 'daily', selectedDate);
+  function updateOutcomes(updated: Outcome[]) {
+    try {
+      localStorage.setItem('outcomes', JSON.stringify(updated));
+      setOutcomes(updated);
+      setOutcomeSaveError('');
+      return true;
+    } catch { setOutcomeSaveError('Outcomes could not be saved. Your changes have not been applied.'); return false; }
+  }
+  function deleteOutcome(id: string) {
+    const updated = outcomes.filter(outcome => outcome.id !== id).map(outcome => outcome.parentId === id ? { ...outcome, parentId: undefined } : outcome);
+    try { localStorage.setItem('outcomes', JSON.stringify(updated)); }
+    catch { setOutcomeSaveError('Outcome could not be deleted.'); return; }
+    setOutcomes(updated);
+    setOutcomeSaveError('');
+    setActivities(previous => previous.map(activity => activity.outcomeId === id ? { ...activity, outcomeId: undefined } : activity));
+    setActiveActivity(previous => previous?.outcomeId === id ? { ...previous, outcomeId: undefined } : previous);
+  }
   const [lastExport, setLastExport] = useState<string | null>(localStorage.getItem('lastExport'));
   const [trackStart, setTrackStart] = useState<string>(() => localStorage.getItem('trackStart') || DEFAULT_TRACK_START);
   const [trackEnd, setTrackEnd] = useState<string>(() => localStorage.getItem('trackEnd') || DEFAULT_TRACK_END);
   // Add state and handler for import result and CSV import
   const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Load activities from localStorage (fix: parse as Activity[])
-  useEffect(() => {
-    const data = localStorage.getItem('activities');
-    if (data) {
-      try {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) {
-          setActivities(parsed);
-        }
-      } catch {
-        setActivities([]);
-      }
-    }
-  }, []);
-
   // Save activities to localStorage (fix: only if not empty)
   useEffect(() => {
+    if (activityStorage.error) return;
     if (activities.length > 0) {
       localStorage.setItem('activities', JSON.stringify(activities));
     } else {
       localStorage.removeItem('activities');
     }
-  }, [activities]);
+  }, [activities, activityStorage.error]);
 
   // Persist tracking period start/end to localStorage
   useEffect(() => {
@@ -256,10 +281,13 @@ const App: React.FC = () => {
   });
   // Chart data: Effort Rating
   const effortData = analysisDates.map(date => {
-    const dayActs = analysisActivities.filter(a => a.date === date);
+    const dayActs = analysisActivities.filter(a => a.date === date && typeof a.effortRating === 'number');
+    const totalEffort = dayActs.reduce((sum, a) => sum + (a.effortRating || 0), 0);
+    const avgEffort = dayActs.length > 0 ? totalEffort / dayActs.length : 0;
     return {
       date,
-      Effort: dayActs.reduce((sum, a) => sum + (a.effortRating || 0), 0)
+      Effort: Number(avgEffort.toFixed(2)), // Limit to 2 decimal places
+      count: dayActs.length
     };
   });
 
@@ -341,9 +369,12 @@ const App: React.FC = () => {
       {/* Tabs */}
       <div className="tabs tab-bar">
         <button className={tab === 'tracking' ? 'tab active' : 'tab'} onClick={() => setTab('tracking')}>Tracking</button>
+        <button className={tab === 'outcomes' ? 'tab active' : 'tab'} onClick={() => setTab('outcomes')}>Outcomes</button>
         <button className={tab === 'analysis' ? 'tab active' : 'tab'} onClick={() => setTab('analysis')}>Analysis</button>
         <button className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>Settings</button>
       </div>
+      {(activityStorage.error || outcomeStorage.error || outcomeSaveError) && <p role="alert">{activityStorage.error || outcomeStorage.error || outcomeSaveError}</p>}
+      {tab === 'outcomes' && !outcomeStorage.error && <Outcomes outcomes={outcomes} activities={activities} date={selectedDate} onChange={updateOutcomes} onDelete={deleteOutcome} />}
       {tab === 'tracking' && (
         <div className="tracking-tab-content">
           {/* Date Selector */}
@@ -356,6 +387,10 @@ const App: React.FC = () => {
             />
             <span className="today-label">{isToday ? "Today" : selectedDate}</span>
           </div>
+          <section className="daily-outcomes">
+            <div className="daily-outcomes-heading"><h2>{isToday ? "Today's Outcomes" : 'Daily Outcomes'}</h2><button type="button" onClick={() => setTab('outcomes')}>Plan</button></div>
+            {dailyOutcomes.length === 0 ? <p>No outcomes planned.</p> : <ul>{dailyOutcomes.map(outcome => <li key={outcome.id}><span>{outcome.title}</span><small>{outcome.status}</small></li>)}</ul>}
+          </section>
           {/* Activity Controls (only for today) */}
           {isToday && (
             <div className="activity-controls">
@@ -437,13 +472,19 @@ const App: React.FC = () => {
                       {')'}
                     </div>
                     <div className="activity-tags">
-                      <span className="tag type">{a.activityType}</span>
+                      {/* <span className="tag type">{a.activityType}</span> */}
                       <span className="tag area">{a.wellbeingArea}</span>
                     </div>
                     {a.effortRating !== undefined && (
                       <div className="effort-rating">Effort: {a.effortRating}/10</div>
                     )}
                     {a.notes && <div className="notes">Notes: {a.notes}</div>}
+                    <div className="activity-outcome">
+                      <OutcomeSelect outcomes={outcomes} value={a.outcomeId} date={a.date} onChange={outcomeId => {
+                        setActivities(previous => previous.map(activity => activity.id === a.id ? { ...activity, outcomeId } : activity));
+                        setActiveActivity(previous => previous?.id === a.id ? { ...previous, outcomeId } : previous);
+                      }} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -485,6 +526,9 @@ const App: React.FC = () => {
               }}
             />
           </div>
+{/*       Decided to hide this section. What matters is effort. 
+          Outcome is out of control. Area of well being and effort score 
+          only matter the most. 
           <div className="chart-section">
             <h3>Time spent by Activity type</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -500,6 +544,7 @@ const App: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
+ */}          
           <div className="chart-section">
             <h3>Time spent by Well-being area</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -516,14 +561,25 @@ const App: React.FC = () => {
             </ResponsiveContainer>
           </div>
           <div className="chart-section">
-            <h3>Effort rating</h3>
+            <h3>Avg Effort Score & activity count</h3>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={effortData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" tickFormatter={formatChartDate} />
-                <YAxis label={{ value: 'Effort', angle: -90, position: 'insideLeft' }} />
+                <YAxis
+                  yAxisId="left"
+                  label={{ value: 'Effort', angle: -90, position: 'insideLeft' }}
+                  domain={[0, 10]}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  label={{ value: '# Activities', angle: 90, position: 'insideRight' }}
+                  allowDecimals={false}
+                />
                 <Tooltip labelFormatter={formatChartDate} />
-                <Bar dataKey="Effort" fill="#fbc02d" />
+                <Bar yAxisId="left" dataKey="Effort" fill="#fbc02d" />
+                <Line yAxisId="right" dataKey="count" stroke="#1976d2" strokeWidth={2} dot />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -560,13 +616,14 @@ const App: React.FC = () => {
             <input type="time" value={trackStart} onChange={e => setTrackStart(e.target.value)} />
             <span>to</span>
             <input type="time" value={trackEnd} onChange={e => setTrackEnd(e.target.value)} />
-            <span className="tracking-period-desc">(Default: 09:00 to 18:00)</span>
           </div>
+          <span className="tracking-period-desc">(Default: 9 am to 6 pm. You can update the tracking period based on your preference)</span>
         </div>
       )}
       {/* Modals */}
       {showStartModal && (
         <StartActivityModal
+          outcomes={outcomes}
           onStart={activity => {
             setActiveActivity(activity);
             setActivities([...activities, activity]);
@@ -591,6 +648,7 @@ const App: React.FC = () => {
       )}
       {editActivity && (
         <EditActivityModal
+          outcomes={outcomes}
           activity={editActivity}
           onSave={updated => {
             setActivities(acts => acts.map(a => a.id === updated.id ? { ...a, ...updated } : a));
@@ -621,9 +679,11 @@ const App: React.FC = () => {
 
 // Start Activity Modal
 const StartActivityModal: React.FC<{
+  outcomes: Outcome[];
   onStart: (activity: Activity) => void;
   onCancel: () => void;
-}> = ({ onStart, onCancel }) => {
+}> = ({ outcomes, onStart, onCancel }) => {
+  const [outcomeId, setOutcomeId] = useState<string | undefined>();
   const [activityType, setActivityType] = useState<ActivityType>('Value');
   const [wellbeingArea, setWellbeingArea] = useState<WellbeingArea>('Physical');
   const [taskTitle, setTaskTitle] = useState('');
@@ -642,14 +702,22 @@ const StartActivityModal: React.FC<{
       <div className="modal">
         <h3>Start Activity</h3>
         <div className="modal-content">
+{/*       I think Activity Type complicates activity start 
+          Value, Incidental and Waste are unnecessary. 
+          What matters is how I felt with the effort on the activity. 
+          if my effort score is above 7, i realized value. 
+          above 5 incidental. below 5 is a waste of time. 
           <label>Activity Type:</label>
           <select value={activityType} onChange={e => setActivityType(e.target.value as ActivityType)}>
             {ACTIVITY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
           </select>
+ */}          
           <label>Well-being Area:</label>
           <select value={wellbeingArea} onChange={e => setWellbeingArea(e.target.value as WellbeingArea)}>
             {WELLBEING_AREAS.map(area => <option key={area} value={area}>{area}</option>)}
           </select>
+          <label htmlFor="start-outcome">Outcome (optional)</label>
+          <OutcomeSelect id="start-outcome" outcomes={outcomes} value={outcomeId} date={getLocalToday()} onChange={setOutcomeId} />
           <label>Task Title (optional):</label>
           <input
             type="text"
@@ -669,6 +737,7 @@ const StartActivityModal: React.FC<{
             startTime: new Date().toISOString(),
             activityType,
             wellbeingArea,
+            outcomeId,
             taskTitle: taskTitle.trim() || undefined,
           } as Activity)}>
             Start Timer
@@ -704,20 +773,19 @@ const StopActivityModal: React.FC<{
             placeholder="e.g. Eating, Shopping..."
           />
           <label>
-            Effort Rating (0-10):
-            <span
-              className="tooltip-icon"
-              onMouseEnter={() => setShowTooltip(true)}
-              onMouseLeave={() => setShowTooltip(false)}
-            >
-              ⓘ
-              {showTooltip && (
-                <span className="tooltip-text">
-                  On a scale of 0-10, how well did I make the best use of my energy & intellect to show exceptional care, minimize risks, maximize opportunity while staying calm & focused on creating a memorable positive experience based on things I control?
-                </span>
-              )}
-            </span>
+            Effort Rating (0-10):           
           </label>
+          <small style={{textAlign: 'left',
+             display: 'block', color: '#666', fontSize: '0.92em', marginBottom: '0.3em' }}>
+            How well did you proactively 
+              <ul style={{ marginTop: 0, marginBottom: 0}}>
+                <li>focus on what matters most</li>
+                <li>show exceptional care</li>
+                <li>minimize risks & seize opportunities</li>
+                <li>stay calm</li>
+                <li>create a memorable positive experience</li>
+              </ul>
+          </small>
           <input
             type="number"
             min={0}
@@ -727,9 +795,10 @@ const StopActivityModal: React.FC<{
           />
           <label>Notes (optional):</label>
           <textarea
+            style={{background: 'white', color: 'black'}}
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Describe the outcome or experience..."
+            placeholder="Note down a few things about what you completed, the impact, what is remaining, how you are feeling.."
           />
         </div>
         <div className="modal-actions">
@@ -749,10 +818,12 @@ const StopActivityModal: React.FC<{
 
 // Edit Activity Modal
 const EditActivityModal: React.FC<{
+  outcomes: Outcome[];
   activity: Activity;
   onSave: (updated: Partial<Activity> & { id: string }) => void;
   onCancel: () => void;
-}> = ({ activity, onSave, onCancel }) => {
+}> = ({ outcomes, activity, onSave, onCancel }) => {
+  const [outcomeId, setOutcomeId] = useState(activity.outcomeId);
   const [activityType, setActivityType] = useState<ActivityType>(activity.activityType);
   const [wellbeingArea, setWellbeingArea] = useState<WellbeingArea>(activity.wellbeingArea);
   const [taskTitle, setTaskTitle] = useState(activity.taskTitle || '');
@@ -800,6 +871,8 @@ const EditActivityModal: React.FC<{
           <datalist id="task-suggestions-edit">
             {suggestions.map(s => <option key={s} value={s} />)}
           </datalist>
+          <label htmlFor="edit-outcome">Outcome (optional)</label>
+          <OutcomeSelect id="edit-outcome" outcomes={outcomes} value={outcomeId} date={activity.date} onChange={setOutcomeId} />
           <label>Start Time:</label>
           <input
             type="datetime-local"
@@ -830,6 +903,7 @@ const EditActivityModal: React.FC<{
               id: activity.id,
               activityType,
               wellbeingArea,
+              outcomeId,
               taskTitle: taskTitle.trim() || undefined,
               notes: notes.trim() || undefined,
               startTime: newStart,

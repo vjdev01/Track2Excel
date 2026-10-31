@@ -1,4 +1,18 @@
-# React + TypeScript + Vite
+# Track2Excel
+
+## Outcome Planning
+
+The Outcomes tab supports up to three daily, weekly, monthly, or yearly outcomes per period. Weeks begin on Monday. Select a planning date to review past periods or plan ahead.
+
+Outcomes can link to the next planning level: daily to weekly, weekly to monthly, and monthly to yearly. Set status explicitly to planned, in progress, achieved, or deferred. Linked activity time does not automatically mark an outcome achieved.
+
+Today's daily outcomes appear on the Tracking tab. Activities can optionally link to an outcome when starting, editing, or using the selector in the activity log. Parent outcomes include activities linked to their descendants. Deleting an outcome keeps activities and child outcomes, removing only their direct links to it.
+
+Outcomes and activity links are saved locally in this browser. They are not synchronized between devices. The existing activity CSV format does not include outcomes or outcome links.
+
+Run planning-model tests with `node --test src/outcomes.test.mjs`; run the production build with `npm run build`.
+
+## Development Template
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

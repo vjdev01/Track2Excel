@@ -68,6 +68,12 @@
   gap: 1rem;
   margin-bottom: 1.5rem;
   justify-content: center;
+  background: #fff !important;
+  color: #222 !important;
+  font-size: 1.18em;  
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;  
 }
 .today-label {
   font-weight: bold;
@@ -199,8 +205,14 @@
 }
 .modal-content label {
   display: block;
+  text-align: left;
   margin-top: 1em;
   font-weight: 500;
+}
+.date-selector input{
+  font-size: 1em;
+  justify-content: center;
+  align-items: center;
 }
 .modal-content input,
 .modal-content select,
@@ -211,11 +223,42 @@
   border-radius: 6px;
   border: 1px solid #ccc;
   font-size: 1em;
-  margin-bottom: 0.5em;
+  /*margin-bottom: 0.5em;
+  background: #fff !important;
+  color: #222 !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none; */ 
 }
 .modal-content textarea {
   min-height: 60px;
   resize: vertical;
+}
+/* Date input: larger font and white background */
+.modal-content input[type="date"],
+.modal-content input[type="datetime-local"],
+.modal-content input[type="time"] {
+  background: #fff !important;
+  color: #222 !important;
+  font-size: 1.18em;
+  border: 1px solid #ccc;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+.modal-content input {
+  color: #222 !important;
+  background: #fff !important;
+}
+/* iOS select fix: override blue text */
+.modal-content select:focus,
+.modal-content select {
+  color: #222 !important;
+  background: #fff !important;
+}
+/* Remove iOS inner shadow on inputs */
+input, select, textarea {
+  box-shadow: none !important;
 }
 .modal-actions {
   display: flex;
@@ -331,36 +374,27 @@
 }
 .tracking-period-desc {
   margin-left: 0.5rem;
-  color: #888;
+  color: #222;
   font-size: 0.95rem;
 }
 .tracking-bar-container {
-  width: 100%;
   max-width: 500px;
-  margin: 0.7rem auto 0.7rem auto;
-  padding: 0.5rem;
+  margin: 0.7rem auto 0.7rem auto;  
+  padding: 2rem 2rem 2.5rem 1.5rem; /* Increased right padding */
   background: #f7f7fa;
   border-radius: 10px;
   box-shadow: 0 1px 4px rgba(30,40,60,0.07);
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  justify-content: center;
   box-sizing: border-box;
-  overflow-x: auto;
-}
-
-.tracking-bar-container {
-  max-width: 500px;
-  margin: 2rem auto;
-  height:fit-content;
-  background: #fff;
-  color: #222;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-  padding: 2rem 1.5rem 2.5rem 1.5rem;
+  overflow-x: hidden;
+  position: relative;
 }
 .tracking-bar-labels {
   display: flex;
+  box-sizing: border-box;
   justify-content: space-between;
   font-size: 0.98rem;
   color: #555;
@@ -369,6 +403,7 @@
 .tracking-bar {
   display: flex;
   height: 22px;
+  box-sizing: border-box;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(30,40,60,0.06);
@@ -436,8 +471,9 @@
 }
 .tab {
   flex: 1 1 0;
+  min-width: 0;
   padding: 0.9em 0.2em;
-  font-size: 1.08em;
+  font-size: 1em;
   font-weight: 600;
   color: #1976d2;
   background: none;
@@ -596,11 +632,75 @@ body {
     box-sizing: border-box;
   }
   .tracking-bar-container {
-    max-width: 100vw;
-    width: 100vw;
+    max-width: 100%;
+    width: 100%;
     margin-left: 0;
     margin-right: 0;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
+  .tracking-bar {
+    max-width: 100%;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
+
+.outcomes-section {
+  width: 100%;
+  max-width: 500px;
+  min-width: 0;
+  padding: 1rem;
+  margin: 0 auto;
+  box-sizing: border-box;
+  color: #222;
+  text-align: left;
+}
+.outcomes-section h2 { margin: 0 0 1rem; font-size: 1.3rem; }
+.outcome-periods { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 1rem; }
+.outcomes-section button { background: #f2f5f8; color: #174a74; }
+.outcome-periods button { padding: 0.6rem 0.2rem; border-radius: 0; text-transform: capitalize; }
+.outcome-periods button[aria-pressed="true"] { background: #1976d2; color: #fff; }
+.outcomes-section label { display: block; margin-top: 0.6rem; font-weight: 500; }
+.outcomes-section input,
+.outcomes-section select,
+.activity-outcome select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.5rem;
+  margin-top: 0.3rem;
+  border: 1px solid #bbc6ce;
+  border-radius: 4px;
+  color: #222;
+  background: #fff;
+  color-scheme: light;
+}
+.outcome-period-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; margin: 1rem 0; font-size: 0.85rem; color: #555; }
+.outcome-editor { padding-bottom: 1rem; border-bottom: 1px solid #dce2e7; }
+.outcome-editor-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+.outcome-editor-actions button { display: inline-flex; align-items: center; gap: 0.4rem; }
+.outcomes-section button:disabled { opacity: 0.5; cursor: default; }
+.outcome-item { padding: 1rem 0; border-bottom: 1px solid #dce2e7; overflow-wrap: anywhere; }
+.outcome-item-heading { display: flex; align-items: flex-start; gap: 0.4rem; }
+.outcome-item-heading h3 { flex: 1; min-width: 0; margin: 0; font-size: 1rem; }
+.outcome-item-heading button { flex: 0 0 36px; width: 36px; height: 36px; padding: 0; }
+.outcome-parent { color: #555; font-size: 0.85rem; margin: 0.4rem 0; }
+.outcome-item details { margin-top: 0.7rem; font-size: 0.9rem; }
+.outcome-item summary { cursor: pointer; }
+.outcome-item ul { padding-left: 1.2rem; }
+.daily-outcomes { text-align: left; margin-bottom: 1rem; border-bottom: 1px solid #dce2e7; padding-bottom: 0.7rem; }
+.daily-outcomes-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.daily-outcomes-heading h2 { font-size: 1.05rem; margin: 0; }
+.daily-outcomes-heading button { padding: 0.4rem 0.8rem; color: #1976d2; background: #f2f5f8; }
+.daily-outcomes ul { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+.daily-outcomes li { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.3rem; }
+.daily-outcomes li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.daily-outcomes small { color: #555; }
+.daily-outcomes p { font-size: 0.9rem; color: #666; }
+.activity-outcome { margin-top: 0.6rem; }
