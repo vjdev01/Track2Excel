@@ -2,6 +2,21 @@ export const OUTCOME_PERIODS = ['daily', 'weekly', 'monthly', 'yearly'] as const
 export const OUTCOME_STATUSES = ['planned', 'in progress', 'achieved', 'deferred'] as const;
 export type OutcomePeriod = typeof OUTCOME_PERIODS[number];
 export type OutcomeStatus = typeof OUTCOME_STATUSES[number];
+export type OutcomeLimits = Record<OutcomePeriod, number>;
+export const DEFAULT_OUTCOME_LIMITS: OutcomeLimits = { daily: 3, weekly: 3, monthly: 3, yearly: 3 };
+
+export function parseOutcomeLimits(raw: string | null): OutcomeLimits {
+  const limits = { ...DEFAULT_OUTCOME_LIMITS };
+  try {
+    const parsed: unknown = JSON.parse(raw || '{}');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return limits;
+    for (const period of OUTCOME_PERIODS) {
+      const value = (parsed as Partial<OutcomeLimits>)[period];
+      if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 1) limits[period] = value;
+    }
+  } catch { return limits; }
+  return limits;
+}
 
 export interface Outcome {
   id: string;
@@ -43,11 +58,13 @@ export function parentCandidates(outcomes: Outcome[], period: OutcomePeriod, dat
   });
 }
 
-export function saveOutcome(outcomes: Outcome[], outcome: Outcome) {
+export function saveOutcome(outcomes: Outcome[], outcome: Outcome, limit = DEFAULT_OUTCOME_LIMITS[outcome.period]) {
+  if (!Number.isSafeInteger(limit) || limit < 1) throw new Error('Outcome limit must be a positive whole number.');
   const normalized = { ...outcome, title: outcome.title.trim(), date: periodBounds(outcome.period, outcome.date).start };
   if (!normalized.title) throw new Error('Enter an outcome.');
-  if (outcomesForPeriod(outcomes, normalized.period, normalized.date).filter(item => item.id !== normalized.id).length >= 3) {
-    throw new Error('This period already has three outcomes.');
+  const existing = outcomes.some(item => item.id === normalized.id && item.period === normalized.period && item.date === normalized.date);
+  if (!existing && outcomesForPeriod(outcomes, normalized.period, normalized.date).length >= limit) {
+    throw new Error(`This period has reached its limit of ${limit} outcomes.`);
   }
   if (normalized.parentId && !parentCandidates(outcomes, normalized.period, normalized.date).some(parent => parent.id === normalized.parentId)) {
     throw new Error('Select a parent outcome from the next planning level.');

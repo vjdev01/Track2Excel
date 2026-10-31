@@ -704,3 +704,10 @@ body {
 .daily-outcomes small { color: #555; }
 .daily-outcomes p { font-size: 0.9rem; color: #666; }
 .activity-outcome { margin-top: 0.6rem; }
+
+.outcome-limit-settings { width: 100%; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #dce2e7; text-align: left; }
+.outcome-limit-settings h2 { margin: 0 0 0.8rem; font-size: 1.1rem; }
+.outcome-limit-settings label { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.6rem; }
+.outcome-limit-settings input { width: 7rem; min-width: 0; max-width: 50%; padding: 0.5rem; box-sizing: border-box; font: inherit; font-size: 1rem; color: #222; background: #fff; border: 1px solid #bbc6ce; border-radius: 4px; color-scheme: light; }
+.outcome-limit-settings button { color: #fff; background: #1976d2; }
+.outcome-limit-settings p { font-size: 0.9rem; overflow-wrap: anywhere; }

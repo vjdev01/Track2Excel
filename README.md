@@ -2,7 +2,7 @@
 
 ## Outcome Planning
 
-The Outcomes tab supports up to three daily, weekly, monthly, or yearly outcomes per period. Weeks begin on Monday. Select a planning date to review past periods or plan ahead.
+The Outcomes tab supports daily, weekly, monthly, and yearly outcomes. Each period defaults to three outcomes; configure independent positive whole-number limits in Settings and select Save outcome limits. Lowering a limit preserves existing outcomes and allows edits, but blocks additions until the count is below the new limit. Limits are saved locally in this browser. Weeks begin on Monday. Select a planning date to review past periods or plan ahead.
 
 Outcomes can link to the next planning level: daily to weekly, weekly to monthly, and monthly to yearly. Set status explicitly to planned, in progress, achieved, or deferred. Linked activity time does not automatically mark an outcome achieved.
 

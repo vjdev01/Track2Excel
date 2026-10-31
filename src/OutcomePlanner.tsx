@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { OUTCOME_PERIODS, OUTCOME_STATUSES, linkedOutcomeIds, outcomesForPeriod, parentCandidates, periodBounds, saveOutcome } from './outcomes';
-import type { Outcome, OutcomePeriod } from './outcomes';
+import type { Outcome, OutcomeLimits, OutcomePeriod } from './outcomes';
 
 interface LinkedActivity {
   id: string;
@@ -31,10 +31,11 @@ export function OutcomeSelect({ outcomes, value, date, onChange, id }: {
   );
 }
 
-export default function Outcomes({ outcomes, activities, date, onChange, onDelete }: {
+export default function Outcomes({ outcomes, activities, date, limits, onChange, onDelete }: {
   outcomes: Outcome[];
   activities: LinkedActivity[];
   date: string;
+  limits: OutcomeLimits;
   onChange: (outcomes: Outcome[]) => boolean;
   onDelete: (id: string) => void;
 }) {
@@ -47,6 +48,7 @@ export default function Outcomes({ outcomes, activities, date, onChange, onDelet
   const visible = outcomesForPeriod(outcomes, period, planDate);
   const parents = parentCandidates(outcomes, period, planDate);
   const bounds = periodBounds(period, planDate);
+  const limit = limits[period];
 
   function resetEditor() {
     setEditing(null);
@@ -74,11 +76,11 @@ export default function Outcomes({ outcomes, activities, date, onChange, onDelet
           const saved = onChange(saveOutcome(outcomes, {
             id: editing?.id || crypto.randomUUID(), title, period, date: bounds.start,
             status: editing?.status || 'planned', parentId: parentId || undefined,
-          }));
+          }, limit));
           if (saved) resetEditor();
         } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to save outcome.'); }
       }}>
-        <label htmlFor="outcome-title">{editing ? 'Edit outcome' : `Outcome ${Math.min(visible.length + 1, 3)} of 3`}</label>
+        <label htmlFor="outcome-title">{editing ? 'Edit outcome' : visible.length >= limit ? `Outcome limit: ${limit}` : `Outcome ${visible.length + 1} of ${limit}`}</label>
         <input id="outcome-title" value={title} maxLength={200} required onChange={event => setTitle(event.target.value)} />
         {period !== 'yearly' && <>
           <label htmlFor="parent-outcome">Parent outcome (optional)</label>
@@ -88,7 +90,7 @@ export default function Outcomes({ outcomes, activities, date, onChange, onDelet
           </select>
         </>}
         <div className="outcome-editor-actions">
-          <button type="submit" disabled={!editing && visible.length >= 3}>{editing ? <FaEdit /> : <FaPlus />} {editing ? 'Save outcome' : 'Add outcome'}</button>
+          <button type="submit" disabled={!editing && visible.length >= limit}>{editing ? <FaEdit /> : <FaPlus />} {editing ? 'Save outcome' : 'Add outcome'}</button>
           {editing && <button type="button" onClick={resetEditor}>Cancel</button>}
         </div>
         {error && <p role="alert">{error}</p>}

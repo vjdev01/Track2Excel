@@ -2,7 +2,7 @@ import React from 'react';
 import {useState, useEffect } from 'react';
 import './App.css';
 import Outcomes, { OutcomeSelect } from './OutcomePlanner';
-import { outcomesForPeriod, parseOutcomes } from './outcomes';
+import { OUTCOME_PERIODS, outcomesForPeriod, parseOutcomeLimits, parseOutcomes } from './outcomes';
 import type { Outcome } from './outcomes';
 import { FaEdit } from 'react-icons/fa';
 import {
@@ -135,6 +135,12 @@ const App: React.FC = () => {
   });
   const [outcomes, setOutcomes] = useState<Outcome[]>(outcomeStorage.items);
   const [outcomeSaveError, setOutcomeSaveError] = useState('');
+  const [outcomeLimits, setOutcomeLimits] = useState(() => {
+    try { return parseOutcomeLimits(localStorage.getItem('outcomeLimits')); }
+    catch { return parseOutcomeLimits(null); }
+  });
+  const [limitSaveError, setLimitSaveError] = useState('');
+  const [limitsSaved, setLimitsSaved] = useState(false);
   const dailyOutcomes = outcomesForPeriod(outcomes, 'daily', selectedDate);
   function updateOutcomes(updated: Outcome[]) {
     try {
@@ -374,7 +380,7 @@ const App: React.FC = () => {
         <button className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>Settings</button>
       </div>
       {(activityStorage.error || outcomeStorage.error || outcomeSaveError) && <p role="alert">{activityStorage.error || outcomeStorage.error || outcomeSaveError}</p>}
-      {tab === 'outcomes' && !outcomeStorage.error && <Outcomes outcomes={outcomes} activities={activities} date={selectedDate} onChange={updateOutcomes} onDelete={deleteOutcome} />}
+      {tab === 'outcomes' && !outcomeStorage.error && <Outcomes outcomes={outcomes} activities={activities} date={selectedDate} limits={outcomeLimits} onChange={updateOutcomes} onDelete={deleteOutcome} />}
       {tab === 'tracking' && (
         <div className="tracking-tab-content">
           {/* Date Selector */}
@@ -618,6 +624,38 @@ const App: React.FC = () => {
             <input type="time" value={trackEnd} onChange={e => setTrackEnd(e.target.value)} />
           </div>
           <span className="tracking-period-desc">(Default: 9 am to 6 pm. You can update the tracking period based on your preference)</span>
+          <form className="outcome-limit-settings" onSubmit={event => {
+            event.preventDefault();
+            const fields = new FormData(event.currentTarget);
+            const updated = { ...outcomeLimits };
+            for (const period of OUTCOME_PERIODS) {
+              const value = Number(fields.get(period));
+              if (!Number.isSafeInteger(value) || value < 1) {
+                setLimitSaveError('Each outcome limit must be a positive whole number.');
+                setLimitsSaved(false);
+                return;
+              }
+              updated[period] = value;
+            }
+            try {
+              localStorage.setItem('outcomeLimits', JSON.stringify(updated));
+              setOutcomeLimits(updated);
+              setLimitSaveError('');
+              setLimitsSaved(true);
+            } catch {
+              setLimitSaveError('Outcome limits could not be saved. Your previous limits are still active.');
+              setLimitsSaved(false);
+            }
+          }} onChange={() => { setLimitsSaved(false); setLimitSaveError(''); }}>
+            <h2>Outcome Limits</h2>
+            {OUTCOME_PERIODS.map(period => <label key={period} htmlFor={`limit-${period}`}>
+              <span>{period === 'daily' ? 'Per day' : period === 'weekly' ? 'Per week' : period === 'monthly' ? 'Per month' : 'Per year'}</span>
+              <input id={`limit-${period}`} name={period} type="number" min={1} max={Number.MAX_SAFE_INTEGER} step={1} required defaultValue={outcomeLimits[period]} />
+            </label>)}
+            <button type="submit">Save outcome limits</button>
+            {limitSaveError && <p role="alert">{limitSaveError}</p>}
+            {limitsSaved && <p role="status">Outcome limits saved.</p>}
+          </form>
         </div>
       )}
       {/* Modals */}
@@ -687,15 +725,6 @@ const StartActivityModal: React.FC<{
   const [activityType, setActivityType] = useState<ActivityType>('Value');
   const [wellbeingArea, setWellbeingArea] = useState<WellbeingArea>('Physical');
   const [taskTitle, setTaskTitle] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (taskTitle.length > 0) {
-      setSuggestions(TASK_SUGGESTIONS.filter(s => s.toLowerCase().includes(taskTitle.toLowerCase())));
-    } else {
-      setSuggestions([]);
-    }
-  }, [taskTitle]);
 
   return (
     <div className="modal-overlay">
@@ -721,13 +750,13 @@ const StartActivityModal: React.FC<{
           <label>Task Title (optional):</label>
           <input
             type="text"
-            value={taskTitle}
+            defaultValue={taskTitle}
             onChange={e => setTaskTitle(e.target.value)}
             list="task-suggestions"
             placeholder="e.g. Eating, Shopping..."
           />
           <datalist id="task-suggestions">
-            {suggestions.map(s => <option key={s} value={s} />)}
+            {TASK_SUGGESTIONS.map(s => <option key={s} value={s} />)}
           </datalist>
         </div>
         <div className="modal-actions">
@@ -768,7 +797,7 @@ const StopActivityModal: React.FC<{
           <label>Task Title (optional):</label>
           <input
             type="text"
-            value={taskTitle}
+            defaultValue={taskTitle}
             onChange={e => setTaskTitle(e.target.value)}
             placeholder="e.g. Eating, Shopping..."
           />
@@ -828,17 +857,8 @@ const EditActivityModal: React.FC<{
   const [wellbeingArea, setWellbeingArea] = useState<WellbeingArea>(activity.wellbeingArea);
   const [taskTitle, setTaskTitle] = useState(activity.taskTitle || '');
   const [notes, setNotes] = useState(activity.notes || '');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [startTime, setStartTime] = useState(() => toLocalInputValue(activity.startTime));
   const [endTime, setEndTime] = useState(() => activity.endTime ? toLocalInputValue(activity.endTime) : '');
-
-  useEffect(() => {
-    if (taskTitle.length > 0) {
-      setSuggestions(TASK_SUGGESTIONS.filter(s => s.toLowerCase().includes(taskTitle.toLowerCase())));
-    } else {
-      setSuggestions([]);
-    }
-  }, [taskTitle]);
 
   // Ensure endTime is not before startTime
   useEffect(() => {
@@ -863,13 +883,13 @@ const EditActivityModal: React.FC<{
           <label>Task Title (optional):</label>
           <input
             type="text"
-            value={taskTitle}
+            defaultValue={taskTitle}
             onChange={e => setTaskTitle(e.target.value)}
             list="task-suggestions-edit"
             placeholder="e.g. Eating, Shopping..."
           />
           <datalist id="task-suggestions-edit">
-            {suggestions.map(s => <option key={s} value={s} />)}
+            {TASK_SUGGESTIONS.map(s => <option key={s} value={s} />)}
           </datalist>
           <label htmlFor="edit-outcome">Outcome (optional)</label>
           <OutcomeSelect id="edit-outcome" outcomes={outcomes} value={outcomeId} date={activity.date} onChange={setOutcomeId} />
