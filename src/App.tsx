@@ -1,9 +1,9 @@
 import React from 'react';
 import {useState, useEffect } from 'react';
 import './App.css';
-import Outcomes, { OutcomeSelect } from './OutcomePlanner';
-import { OUTCOME_PERIODS, outcomesForPeriod, parseOutcomeLimits, parseOutcomes } from './outcomes';
-import type { Outcome } from './outcomes';
+import Outcomes, { IntentSelect, OutcomeSelect } from './OutcomePlanner';
+import { OUTCOME_PERIODS, outcomeIntent, outcomesForPeriod, parseOutcomeLimits, parseOutcomes } from './outcomes';
+import type { IntentId, Outcome } from './outcomes';
 import { FaEdit } from 'react-icons/fa';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, Line
@@ -33,6 +33,7 @@ interface Activity {
   effortRating?: number;
   notes?: string;
   outcomeId?: string;
+  intentId?: IntentId;
 }
 
 function getToday() {
@@ -395,7 +396,7 @@ const App: React.FC = () => {
           </div>
           <section className="daily-outcomes">
             <div className="daily-outcomes-heading"><h2>{isToday ? "Today's Outcomes" : 'Daily Outcomes'}</h2><button type="button" onClick={() => setTab('outcomes')}>Plan</button></div>
-            {dailyOutcomes.length === 0 ? <p>No outcomes planned.</p> : <ul>{dailyOutcomes.map(outcome => <li key={outcome.id}><span>{outcome.title}</span><small>{outcome.status}</small></li>)}</ul>}
+            {dailyOutcomes.length === 0 ? <p>No outcomes planned.</p> : <ul>{dailyOutcomes.map(outcome => <li key={outcome.id}><span>{outcome.priority && <strong>{outcome.priority} </strong>}{outcome.title}</span><small>{outcome.status}</small></li>)}</ul>}
           </section>
           {/* Activity Controls (only for today) */}
           {isToday && (
@@ -489,6 +490,10 @@ const App: React.FC = () => {
                       <OutcomeSelect outcomes={outcomes} value={a.outcomeId} date={a.date} onChange={outcomeId => {
                         setActivities(previous => previous.map(activity => activity.id === a.id ? { ...activity, outcomeId } : activity));
                         setActiveActivity(previous => previous?.id === a.id ? { ...previous, outcomeId } : previous);
+                      }} />
+                      <IntentSelect value={a.intentId} inherited={outcomeIntent(outcomes, a.outcomeId)} onChange={intentId => {
+                        setActivities(previous => previous.map(activity => activity.id === a.id ? { ...activity, intentId } : activity));
+                        setActiveActivity(previous => previous?.id === a.id ? { ...previous, intentId } : previous);
                       }} />
                     </div>
                   </div>
@@ -722,6 +727,7 @@ const StartActivityModal: React.FC<{
   onCancel: () => void;
 }> = ({ outcomes, onStart, onCancel }) => {
   const [outcomeId, setOutcomeId] = useState<string | undefined>();
+  const [intentId, setIntentId] = useState<IntentId | undefined>();
   const [activityType, setActivityType] = useState<ActivityType>('Value');
   const [wellbeingArea, setWellbeingArea] = useState<WellbeingArea>('Physical');
   const [taskTitle, setTaskTitle] = useState('');
@@ -747,6 +753,8 @@ const StartActivityModal: React.FC<{
           </select>
           <label htmlFor="start-outcome">Outcome (optional)</label>
           <OutcomeSelect id="start-outcome" outcomes={outcomes} value={outcomeId} date={getLocalToday()} onChange={setOutcomeId} />
+          <label htmlFor="start-intent">Intent (optional)</label>
+          <IntentSelect id="start-intent" value={intentId} inherited={outcomeIntent(outcomes, outcomeId)} onChange={setIntentId} />
           <label>Task Title (optional):</label>
           <input
             type="text"
@@ -767,6 +775,7 @@ const StartActivityModal: React.FC<{
             activityType,
             wellbeingArea,
             outcomeId,
+            intentId,
             taskTitle: taskTitle.trim() || undefined,
           } as Activity)}>
             Start Timer
@@ -853,6 +862,7 @@ const EditActivityModal: React.FC<{
   onCancel: () => void;
 }> = ({ outcomes, activity, onSave, onCancel }) => {
   const [outcomeId, setOutcomeId] = useState(activity.outcomeId);
+  const [intentId, setIntentId] = useState(activity.intentId);
   const [activityType, setActivityType] = useState<ActivityType>(activity.activityType);
   const [wellbeingArea, setWellbeingArea] = useState<WellbeingArea>(activity.wellbeingArea);
   const [taskTitle, setTaskTitle] = useState(activity.taskTitle || '');
@@ -893,6 +903,8 @@ const EditActivityModal: React.FC<{
           </datalist>
           <label htmlFor="edit-outcome">Outcome (optional)</label>
           <OutcomeSelect id="edit-outcome" outcomes={outcomes} value={outcomeId} date={activity.date} onChange={setOutcomeId} />
+          <label htmlFor="edit-intent">Intent (optional)</label>
+          <IntentSelect id="edit-intent" value={intentId} inherited={outcomeIntent(outcomes, outcomeId)} onChange={setIntentId} />
           <label>Start Time:</label>
           <input
             type="datetime-local"
@@ -924,6 +936,7 @@ const EditActivityModal: React.FC<{
               activityType,
               wellbeingArea,
               outcomeId,
+              intentId,
               taskTitle: taskTitle.trim() || undefined,
               notes: notes.trim() || undefined,
               startTime: newStart,

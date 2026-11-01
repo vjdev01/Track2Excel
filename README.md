@@ -6,6 +6,12 @@ The Outcomes tab supports daily, weekly, monthly, and yearly outcomes. Each peri
 
 Outcomes can link to the next planning level: daily to weekly, weekly to monthly, and monthly to yearly. Set status explicitly to planned, in progress, achieved, or deferred. Linked activity time does not automatically mark an outcome achieved.
 
+Each outcome has optional priority (P1 Must, P2 Should, P3 Could), intent, and multiline notes. Priority sorts outcomes within the selected period, with unprioritized outcomes last. Notes expand in the planning list.
+
+The three intents are Building Muscle (physical security), Compounding Wealth (financial security), and Reinforcing Trust (social security). A parent's intent takes precedence and is inherited through the outcome hierarchy; an outcome without an aligned parent can choose its own intent. Activities inherit their linked outcome's intent, or can select a direct intent independently.
+
+Select Alignment in the Outcomes tab to review the selected period's planned and achieved outcomes, activity counts, and completed activity minutes by intent. Unaligned lists work without an effective intent, including activities linked to an outcome that has no intent. Each activity is counted once. Changing an intent reclassifies its linked work in this view; time invested does not automatically change outcome status.
+
 Today's daily outcomes appear on the Tracking tab. Activities can optionally link to an outcome when starting, editing, or using the selector in the activity log. Parent outcomes include activities linked to their descendants. Deleting an outcome keeps activities and child outcomes, removing only their direct links to it.
 
 Outcomes and activity links are saved locally in this browser. They are not synchronized between devices. The existing activity CSV format does not include outcomes or outcome links.
