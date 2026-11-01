@@ -2,6 +2,10 @@
 
 ## Outcome Planning
 
+Running activities end automatically after 90 minutes or at the next local midnight, whichever comes first. The saved end time is the exact cutoff, even if the browser was asleep or closed; expired activities are reconciled when the app resumes or reloads. Existing titles, notes, and planning links are preserved, and an open Stop dialog can still save its details after an automatic cutoff. Finished activities remain editable.
+
+Display updates pause while the page is hidden and refresh immediately when it becomes visible. Seconds update only inside the active timer on the Tracking tab; the tracking summary refreshes once per minute while visible. Chart datasets are cached until activities, the analysis range, or the local day changes. Automatic cutoffs and reload recovery remain active independently of display updates; no manual refresh is needed.
+
 The Outcomes tab supports daily, weekly, monthly, and yearly outcomes. Each period defaults to three outcomes; configure independent positive whole-number limits in Settings and select Save outcome limits. Lowering a limit preserves existing outcomes and allows edits, but blocks additions until the count is below the new limit. Limits are saved locally in this browser. Weeks begin on Monday. Select a planning date to review past periods or plan ahead.
 
 Outcomes can link to the next planning level: daily to weekly, weekly to monthly, and monthly to yearly. Set status explicitly to planned, in progress, achieved, or deferred. Linked activity time does not automatically mark an outcome achieved.
@@ -17,6 +21,7 @@ Today's daily outcomes appear on the Tracking tab. Activities can optionally lin
 Outcomes and activity links are saved locally in this browser. They are not synchronized between devices. The existing activity CSV format does not include outcomes or outcome links.
 
 Run planning-model tests with `node --test src/outcomes.test.mjs`; run the production build with `npm run build`.
+Run activity timer tests with `node --test src/activityTimer.test.mjs`.
 
 ## Development Template
 

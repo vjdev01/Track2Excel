@@ -1,6 +1,9 @@
 import React from 'react';
-import {useState, useEffect } from 'react';
+import {useState, useEffect, useMemo } from 'react';
 import './App.css';
+import ActivityTimer from './TimerDisplay';
+import { useVisibleNow } from './useVisibleNow';
+import { activityDeadline, closeExpiredActivities, completeTimedActivity } from './activityTimer';
 import Outcomes, { IntentSelect, OutcomeSelect } from './OutcomePlanner';
 import { OUTCOME_PERIODS, outcomeIntent, outcomesForPeriod, parseOutcomeLimits, parseOutcomes } from './outcomes';
 import type { IntentId, Outcome } from './outcomes';
@@ -112,21 +115,22 @@ const DEFAULT_TRACK_START = '09:00';
 const DEFAULT_TRACK_END = '18:00';
 
 const App: React.FC = () => {
+  const now = useVisibleNow(60000);
+  const today = getLocalToday();
   // State
   const [selectedDate, setSelectedDate] = useState(getLocalToday());
   const [activityStorage] = useState(() => {
     try {
       const parsed: unknown = JSON.parse(localStorage.getItem('activities') || '[]');
       if (!Array.isArray(parsed)) throw new Error('Invalid saved activities');
-      return { items: parsed as Activity[], error: '' };
+      return { items: closeExpiredActivities(parsed as Activity[], Date.now()), error: '' };
     } catch { return { items: [] as Activity[], error: 'Saved activities could not be read. They have not been overwritten.' }; }
   });
   const [activities, setActivities] = useState<Activity[]>(activityStorage.items);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [activeActivity, setActiveActivity] = useState<Activity | null>(() => activityStorage.items.find(activity => !activity.endTime) || null);
-  const [timer, setTimer] = useState(0);
-  const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [timerNotice, setTimerNotice] = useState('');
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
   const [editEndTimeActivity, setEditEndTimeActivity] = useState<Activity | null>(null);
   const [tab, setTab] = useState<'tracking' | 'outcomes' | 'analysis' | 'settings'>('tracking');
@@ -186,16 +190,28 @@ const App: React.FC = () => {
 
   // Timer effect
   useEffect(() => {
-    if (activeActivity && !activeActivity.endTime) {
-      const interval = setInterval(() => {
-        setTimer(Date.now() - new Date(activeActivity.startTime).getTime());
-      }, 1000);
-      setTimerInterval(interval);
-      return () => clearInterval(interval);
-    } else {
-      setTimer(0);
-      if (timerInterval) clearInterval(timerInterval);
+    if (!activeActivity || activeActivity.endTime) {
+      return;
     }
+    const runningActivity = activeActivity;
+    const deadline = activityDeadline(runningActivity.startTime);
+    function checkDeadline() {
+      if (Date.now() >= deadline) {
+        const completed = completeTimedActivity(runningActivity, Date.now());
+        setActivities(previous => previous.map(activity => activity.id === completed.id && !activity.endTime ? completed : activity));
+        setActiveActivity(previous => previous?.id === completed.id && !previous.endTime ? completed : previous);
+        setTimerNotice(`Activity stopped automatically at ${formatTime(completed.endTime)} (90-minute or midnight limit).`);
+      }
+    }
+    checkDeadline();
+    const cutoff = setTimeout(checkDeadline, Math.max(0, deadline - Date.now()));
+    document.addEventListener('visibilitychange', checkDeadline);
+    window.addEventListener('focus', checkDeadline);
+    return () => {
+      clearTimeout(cutoff);
+      document.removeEventListener('visibilitychange', checkDeadline);
+      window.removeEventListener('focus', checkDeadline);
+    };
   }, [activeActivity]);
 
   // Date activities
@@ -204,7 +220,7 @@ const App: React.FC = () => {
     .sort((a: any, b: any) => (b.startTime.localeCompare(a.startTime)));
 
   // Helper: is selected date today?
-  const isToday = selectedDate === getLocalToday();
+  const isToday = selectedDate === today;
 
   // Handlers
   const handleStartActivity = () => setShowStartModal(true);
@@ -243,10 +259,6 @@ const App: React.FC = () => {
     localStorage.setItem('lastExport', now);
   };
 
-  // Helper: get activities in date range
-  function getActivitiesInRange(start: string, end: string) {
-    return activities.filter(a => a.date >= start && a.date <= end && a.endTime);
-  }
   // Helper: get last N days (local)
   function getLastNDates(n: number) {
     const arr = [];
@@ -262,20 +274,15 @@ const App: React.FC = () => {
     const dates = getLastNDates(7);
     return { start: dates[0], end: dates[dates.length - 1] };
   });
-  const analysisDates = getLastNDates(
+  const { wellbeingData, effortData } = useMemo(() => {
+  const analysisDates = Array.from({ length:
     Math.min(10, Math.ceil((new Date(analysisRange.end).getTime() - new Date(analysisRange.start).getTime()) / 86400000) + 1)
-  ).filter(d => d >= analysisRange.start && d <= analysisRange.end);
-  const analysisActivities = getActivitiesInRange(analysisRange.start, analysisRange.end);
-  // Chart data: Activity Type
-  const activityTypeData = analysisDates.map(date => {
-    const dayActs = analysisActivities.filter(a => a.date === date);
-    const result: any = { date };
-    ACTIVITY_TYPES.forEach(type => {
-      result[type] = dayActs.filter(a => a.activityType === type)
-        .reduce((sum, a) => sum + (a.duration || 0), 0);
-    });
-    return result;
-  });
+  }, (_, index) => {
+    const date = new Date(`${today}T12:00:00`);
+    date.setDate(date.getDate() - Math.min(10, Math.ceil((new Date(analysisRange.end).getTime() - new Date(analysisRange.start).getTime()) / 86400000) + 1) + index + 1);
+    return toLocalDateString(date);
+  }).filter(date => date >= analysisRange.start && date <= analysisRange.end);
+  const analysisActivities = activities.filter(activity => activity.date >= analysisRange.start && activity.date <= analysisRange.end && activity.endTime);
   // Chart data: Well-being Area
   const wellbeingData = analysisDates.map(date => {
     const dayActs = analysisActivities.filter(a => a.date === date);
@@ -297,6 +304,8 @@ const App: React.FC = () => {
       count: dayActs.length
     };
   });
+  return { wellbeingData, effortData };
+  }, [activities, analysisRange.start, analysisRange.end, today]);
 
   // Tracking period calculations
   const totalTrackMinutes = getMinutesBetween(trackStart, trackEnd);
@@ -304,13 +313,13 @@ const App: React.FC = () => {
   let remaining = 0;
   let tracked = 0;
   if (isToday) {
-    const now = new Date();
+    const currentTime = new Date(now);
     const [sh, sm] = trackStart.split(':').map(Number);
     const [eh, em] = trackEnd.split(':').map(Number);
-    const start = new Date(now); start.setHours(sh, sm, 0, 0);
-    const end = new Date(now); end.setHours(eh, em, 0, 0);
-    elapsed = Math.max(0, Math.min(totalTrackMinutes, Math.floor((now.getTime() - start.getTime()) / 60000)));
-    remaining = Math.max(0, Math.min(totalTrackMinutes - elapsed, Math.floor((end.getTime() - now.getTime()) / 60000)));
+    const start = new Date(currentTime); start.setHours(sh, sm, 0, 0);
+    const end = new Date(currentTime); end.setHours(eh, em, 0, 0);
+    elapsed = Math.max(0, Math.min(totalTrackMinutes, Math.floor((currentTime.getTime() - start.getTime()) / 60000)));
+    remaining = Math.max(0, Math.min(totalTrackMinutes - elapsed, Math.floor((end.getTime() - currentTime.getTime()) / 60000)));
     tracked = activitiesForDate.filter(a => a.endTime && new Date(a.startTime) >= start && new Date(a.endTime) <= end)
       .reduce((sum, a) => sum + (a.duration || 0), 0);
   } else {
@@ -381,6 +390,7 @@ const App: React.FC = () => {
         <button className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>Settings</button>
       </div>
       {(activityStorage.error || outcomeStorage.error || outcomeSaveError) && <p role="alert">{activityStorage.error || outcomeStorage.error || outcomeSaveError}</p>}
+      {timerNotice && <p role="status">{timerNotice}</p>}
       {tab === 'outcomes' && !outcomeStorage.error && <Outcomes outcomes={outcomes} activities={activities} date={selectedDate} limits={outcomeLimits} onChange={updateOutcomes} onDelete={deleteOutcome} />}
       {tab === 'tracking' && (
         <div className="tracking-tab-content">
@@ -408,11 +418,9 @@ const App: React.FC = () => {
               >
                 Start Activity
               </button>
-              <span className="timer-display">
-                {activeActivity && !activeActivity.endTime
-                  ? formatDuration(timer)
-                  : '--:--'}
-              </span>
+              {activeActivity && !activeActivity.endTime
+                ? <ActivityTimer startTime={activeActivity.startTime} formatDuration={formatDuration} />
+                : <span className="timer-display">--:--</span>}
               <button
                 className="stop-btn"
                 onClick={handleStopActivity}
@@ -668,6 +676,7 @@ const App: React.FC = () => {
         <StartActivityModal
           outcomes={outcomes}
           onStart={activity => {
+            setTimerNotice('');
             setActiveActivity(activity);
             setActivities([...activities, activity]);
             setShowStartModal(false);
@@ -675,13 +684,12 @@ const App: React.FC = () => {
           onCancel={() => setShowStartModal(false)}
         />
       )}
-      {showStopModal && activeActivity && !activeActivity.endTime && (
+      {showStopModal && activeActivity && (
         <StopActivityModal
           activity={activeActivity}
           onStop={(updates) => {
-            const endTime = new Date().toISOString();
-            const updated = { ...activeActivity, ...updates, endTime };
-            updated.duration = Math.round((new Date(endTime).getTime() - new Date(activeActivity.startTime).getTime()) / 60000);
+            const now = activeActivity.endTime ? new Date(activeActivity.endTime).getTime() : Date.now();
+            const updated = completeTimedActivity({ ...activeActivity, ...updates }, now);
             setActivities(acts => acts.map(a => a.id === updated.id ? updated : a));
             setActiveActivity(null);
             setShowStopModal(false);
